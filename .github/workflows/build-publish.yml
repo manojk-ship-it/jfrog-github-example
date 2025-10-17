@@ -1,142 +1,130 @@
 name: build-publish-scan
 on:
-    push:
-        branches:
-         main
+    push:
+        branches:
+         - main
 permissions:
-  actions: read # for detecting the Github Actions environment.
-  id-token: write # for creating OIDC tokens for signing.
-  packages: write
-  contents: read
+  actions: read # for detecting the Github Actions environment.
+  id-token: write # for creating OIDC tokens for signing.
+  packages: write
+  contents: read
 jobs:
-    build-publish-python:
-        runs-on: ubuntu-latest              
-        env:
-          DOCKER_REPO: 'codeninjas-proj-docker-local'
-          IMAGE_NAME: 'my-very-cool-image:${{ github.run_number }}'
-          JF_URL: https://hts2.jfrog.io
-          DOCKER_CLI_EXPERIMENTAL: enabled
-        steps:
-            # Use the specific setup-cli branch
-            - name: Setup JFrog CLI
-              uses: jfrog/setup-jfrog-cli@v4
-              id: setup-cli
-              env:
-                JF_URL: https://hts2.jfrog.io
-                JF_PROJECT: ${{ vars.JF_PROJECT }}
-              with:
-                  oidc-provider-name: vigneshs-oidc
-            - name: Verify OIDC Outputs
-              run: |
-                echo "OIDC User: ${{ steps.setup-cli.outputs.oidc-user }}"
-                echo "OIDC Token available: ${{ steps.setup-cli.outputs.oidc-token != '' }}" 
+    build-publish-python:
+        runs-on: ubuntu-latest              
+        env:
+          # 1. CHANGED: DOCKER_REPO value
+          DOCKER_REPO: 'manojk-python-local' 
+          IMAGE_NAME: 'my-very-cool-image:${{ github.run_number }}'
+          JF_URL: https://hts2.jfrog.io
+          DOCKER_CLI_EXPERIMENTAL: enabled
+        steps:
+            # Use the specific setup-cli branch
+            - name: Setup JFrog CLI
+              uses: jfrog/setup-jfrog-cli@v4
+              id: setup-cli
+              env:
+                JF_URL: https://hts2.jfrog.io
+                JF_PROJECT: ${{ vars.JF_PROJECT }}
+              with:
+                  # 2. CHANGED: OIDC Provider name
+                  oidc-provider-name: manojk-oci 
+            - name: Verify OIDC Outputs
+              run: |
+                echo "OIDC User: ${{ steps.setup-cli.outputs.oidc-user }}"
+                echo "OIDC Token available: ${{ steps.setup-cli.outputs.oidc-token != '' }}" 
 
-            - name: Checkout the repository
-              uses: actions/checkout@v4
+            - name: Checkout the repository
+              uses: actions/checkout@v4
 
 
-            - name: configure jfrog environment
-              run: |
-                # Use a curated repository for python dependencies resolution
-                jf pip-config --repo-resolve=codeninjas-proj-python-virtual   
+            - name: configure jfrog environment
+              run: |
+                # 3. CHANGED: Python virtual repository name
+                jf pip-config --repo-resolve=manojk-python-virtual   
 
-            - name: configure environment
-              run: |    
-                pip install --upgrade pip     
-                python3 -m pip install --upgrade pip setuptools wheel sigstore
-                wheel -h
-                pip show setuptools
-                echo $VIRTUAL_ENV
+            - name: configure environment
+              run: |    
+                pip install --upgrade pip     
+                python3 -m pip install --upgrade pip setuptools wheel sigstore
+                wheel -h
+                pip show setuptools
+                echo $VIRTUAL_ENV
 
-            - name: build project
-              run: |                                   
-                jf pip install -r requirements.txt  --module=jfrog-python-example                
-                python setup.py sdist bdist_wheel
-                cd dist && echo "hashes=$(sha256sum * | base64 -w0)" >> $GITHUB_OUTPUT
+            - name: build project
+              run: |                                   
+                jf pip install -r requirements.txt  --module=jfrog-python-example                
+                python setup.py sdist bdist_wheel
+                cd dist && echo "hashes=$(sha256sum * | base64 -w0)" >> $GITHUB_OUTPUT
 
-            - name: publish python package
-              run: |
-                jf rt u dist/ codeninjas-proj-python-virtual/example-projects/ --module=jfrog-python-example
+            - name: publish python package
+              run: |
+                # 4. CHANGED: Target python virtual repository name
+                jf rt u dist/ manojk-python-virtual/example-projects/ --module=jfrog-python-example
 
-      
-            - name: Set up QEMU
-              uses: docker/setup-qemu-action@v3                 
+      
+            - name: Set up QEMU
+              uses: docker/setup-qemu-action@v3                 
 
-            - name: Authenticate Docker
-              uses: docker/login-action@v3
-              with:
-                registry: hts2-codeninjas-proj-docker-local.jfrog.io
-                username: ${{ steps.setup-cli.outputs.oidc-user }}
-                password: ${{ steps.setup-cli.outputs.oidc-token }}
+            - name: Authenticate Docker
+              uses: docker/login-action@v3
+              with:
+                # 5. CHANGED: Docker registry URL prefix to match new DOCKER_REPO
+                registry: hts2-manojk-python-local.jfrog.io
+                username: ${{ steps.setup-cli.outputs.oidc-user }}
+                password: ${{ steps.setup-cli.outputs.oidc-token }}
 
-            - name: Setup buildx instance
-              uses: docker/setup-buildx-action@v3
-              with:
-                use: true
-                platforms: linux/amd64,linux/arm64
-                install: true
+            - name: Setup buildx instance
+              uses: docker/setup-buildx-action@v3
+              with:
+                use: true
+                platforms: linux/amd64,linux/arm64
+                install: true
 
-            - name: docker build through 
-              run: |  
-                docker buildx ls
-                jf docker --version
-                jf docker build --tag hts2-codeninjas-proj-docker-local.jfrog.io/${{ env.DOCKER_REPO }}/${{ env.IMAGE_NAME }} --platform linux/amd64,linux/arm64 --metadata-file  metadata.json --push .
-                
-            - name: docker scan
-              run: |  
-                 jf docker pull hts2-codeninjas-proj-docker-local.jfrog.io/${{ env.DOCKER_REPO }}/${{ env.IMAGE_NAME }}
-                 jf docker scan hts2-codeninjas-proj-docker-local.jfrog.io/${{ env.DOCKER_REPO }}/${{ env.IMAGE_NAME }}   
-            #- name: docker build
-            #  run: |  
-            #    jf docker build --tag ${{ vars.JF_URL }}/${{ env.DOCKER_REPO }}/${{ env.IMAGE_NAME }}-amd64 --platform  linux/amd64 --load .
-            #    #docker images
-            #    jf docker scan ${{ vars.JF_URL }}/${{ env.DOCKER_REPO }}/${{ env.IMAGE_NAME }}-amd64                
-            #    jf docker push ${{ vars.JF_URL }}/${{ env.DOCKER_REPO }}/${{ env.IMAGE_NAME }}-amd64
-                
-            #    jf docker build --tag ${{ vars.JF_URL }}/${{ env.DOCKER_REPO }}/${{ env.IMAGE_NAME }}-arm64 --platform  linux/arm64 --load .
-            #    #docker images
-            #    jf docker scan ${{ vars.JF_URL }}/${{ env.DOCKER_REPO }}/${{ env.IMAGE_NAME }}-arm64                
-            #    jf docker push ${{ vars.JF_URL }}/${{ env.DOCKER_REPO }}/${{ env.IMAGE_NAME }}-arm64
-                
-            #    #echo "docker images scanned, now lets push a fat manifest and the images"
-            #    #docker manifest create  ${{ vars.JF_URL }}/${{ env.DOCKER_REPO }}/${{ env.IMAGE_NAME }} ${{ vars.JF_URL }}/${{ env.DOCKER_REPO }}/${{ env.IMAGE_NAME }}-amd64 ${{ vars.JF_URL }}/${{ env.DOCKER_REPO }}/${{ env.IMAGE_NAME }}-arm64                
-            #    #echo "docker manifest created"
-            #    #docker manifest push ${{ vars.JF_URL }}/${{ env.DOCKER_REPO }}/${{ env.IMAGE_NAME }}
-            #    #echo "docker manifest pushed"
-            #    #docker image save -o myimage.tar localhost:5000/myimage:latest
-                
+            - name: docker build through 
+              run: |  
+                docker buildx ls
+                jf docker --version
+                # 6. CHANGED: Docker target tag URL prefix to match new DOCKER_REPO
+                jf docker build --tag hts2-manojk-python-local.jfrog.io/${{ env.DOCKER_REPO }}/${{ env.IMAGE_NAME }} --platform linux/amd64,linux/arm64 --metadata-file  metadata.json --push .
+                
+            - name: docker scan
+              run: |  
+                 # 7. CHANGED: Pull URL prefix to match new DOCKER_REPO
+                 jf docker pull hts2-manojk-python-local.jfrog.io/${{ env.DOCKER_REPO }}/${{ env.IMAGE_NAME }}
+                 # 8. CHANGED: Scan URL prefix to match new DOCKER_REPO
+                 jf docker scan hts2-manojk-python-local.jfrog.io/${{ env.DOCKER_REPO }}/${{ env.IMAGE_NAME }}   
+            
+            - name: add docker package to build
+              run: |  
+                 echo "----------------"
+                 cat metadata.json
+                 echo "----------------"
+                 digest=$(cat metadata.json | jq '.["containerimage.digest"]')
+                 echo "digest=$digest"
+                 # 9. CHANGED: Image URL in metadata to match new DOCKER_REPO
+                 echo "hts2-manojk-python-local.jfrog.io/${{ env.DOCKER_REPO }}/${{ env.IMAGE_NAME }}@$digest" > metadata.json
+                 jf rt build-docker-create ${{ env.DOCKER_REPO }} --image-file metadata.json 
 
-            - name: add docker package to build
-              run: |  
-                 echo "----------------"
-                 cat metadata.json
-                 echo "----------------"
-                 digest=$(cat metadata.json | jq '.["containerimage.digest"]')
-                 echo "digest=$digest"
-                 echo "hts2-codeninjas-proj-docker-local.jfrog.io/${{ env.DOCKER_REPO }}/${{ env.IMAGE_NAME }}@$digest" > metadata.json
-                 jf rt build-docker-create ${{ env.DOCKER_REPO }} --image-file metadata.json 
+            - name: publish build info
+              run: |
+                jf rt build-collect-env 
+                jf rt build-add-dependencies .
+                jf rt build-add-git
+                jf rt build-publish
 
-            - name: publish build info
-              run: |
-                jf rt build-collect-env 
-                jf rt build-add-dependencies .
-                jf rt build-add-git
-                jf rt build-publish
-
-            - name: build scan
-              run: |            
-                jf build-scan
-                
-            - name: Write to workflow job summary
-              run: |
-                    NOTE=$'>[!NOTE]\n>Frog Notes \n'
-                    TIP=$'>[!TIP]\n>Hello JFrog\n'
-                    IMPORTANT=$'>[!IMPORTANT]\n>Hello IMPORTANT NOTE\n'
-                    WARNING=$'>[!WARNING]\n>Hello WARNING NOTE\n'
-                    CAUTION=$'>[!CAUTION]\n>Hello CAUTION NOTE\n'
-                    echo "$NOTE" >> $GITHUB_STEP_SUMMARY
-                    echo "$TIP" >> $GITHUB_STEP_SUMMARY
-                    echo "$IMPORTANT" >> $GITHUB_STEP_SUMMARY
-                    echo "$WARNING" >> $GITHUB_STEP_SUMMARY
-                    echo "$CAUTION" >> $GITHUB_STEP_SUMMARY
-
+            - name: build scan
+              run: |            
+                jf build-scan
+                
+            - name: Write to workflow job summary
+              run: |
+                    NOTE=$'>[!NOTE]\n>Frog Notes \n'
+                    TIP=$'>[!TIP]\n>Hello JFrog\n'
+                    IMPORTANT=$'>[!IMPORTANT]\n>Hello IMPORTANT NOTE\n'
+                    WARNING=$'>[!WARNING]\n>Hello WARNING NOTE\n'
+                    CAUTION=$'>[!CAUTION]\n>Hello CAUTION NOTE\n'
+                    echo "$NOTE" >> $GITHUB_STEP_SUMMARY
+                    echo "$TIP" >> $GITHUB_STEP_SUMMARY
+                    echo "$IMPORTANT" >> $GITHUB_STEP_SUMMARY
+                    echo "$WARNING" >> $GITHUB_STEP_SUMMARY
+                    echo "$CAUTION" >> $GITHUB_STEP_SUMMARY
