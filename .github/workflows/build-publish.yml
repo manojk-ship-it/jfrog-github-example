@@ -14,7 +14,7 @@ jobs:
         env:
           # 1. CHANGED: DOCKER_REPO value
           DOCKER_REPO: 'manojk-python-local' 
-          IMAGE_NAME: 'my-very-cool-image:${{ github.run_number }}'
+          IMAGE_NAME: 'my-python-image:${{ github.run_number }}'
           JF_URL: https://hts2.jfrog.io
           DOCKER_CLI_EXPERIMENTAL: enabled
         steps:
