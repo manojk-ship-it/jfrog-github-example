@@ -1,2 +1,2 @@
 PyYAML>3.11
-redis == 4.6.0
+redis == 4.5.0
