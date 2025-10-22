@@ -23,7 +23,7 @@ jobs:
               uses: jfrog/setup-jfrog-cli@v4
               id: setup-cli
               env:
-                JF_URL: ${{ env.JF_URL }}
+                JF_URL: https://hts2.jfrog.io #${{ env.JF_URL }}
                 JF_PROJECT: ${{ vars.JF_PROJECT }}
               with:
                   # FIX: Changed to the correct provider name to resolve 403 Forbidden
