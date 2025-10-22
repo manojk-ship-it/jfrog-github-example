@@ -1,4 +1,4 @@
-name: build-publish-scan-python
+name: build-publish-scan
 on:
     push:
         branches:
