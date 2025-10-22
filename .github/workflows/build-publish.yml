@@ -144,7 +144,7 @@ jobs:
       env:
         # ✅ FIX: Explicitly set JF_URL to your JFrog platform instance URL 
         # to resolve the "getaddrinfo EAI_AGAIN" (DNS/connection) error.
-        JF_URL: ${{ env.JF_URL }} #https://hts2.jfrog.io
+        JF_URL: https://hts2.jfrog.io #${{ env.JF_URL }}
         JF_PROJECT: ${{ vars.JF_PROJECT }} 
         # Use GITHUB_TOKEN to allow Frogbot to interact with the Git repository (e.g., open PRs)
         JF_GIT_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
