@@ -1,4 +1,4 @@
-name: build-publish-scan
+name: build-publish-python
 on:
     push:
         branches:
@@ -148,11 +148,12 @@ jobs:
         JF_URL: https://hts2.jfrog.io
         JF_PROJECT: ${{ vars.JF_PROJECT }} # Assuming this is still needed
         # Assuming you use a GitHub token for Frogbot to open PRs, etc.
-        # JF_GIT_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+        JF_GIT_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
       steps:
         - name: Run Frogbot Security Scan
           uses: jfrog/frogbot@v2
           with:
             # FIX: Use the correct OIDC provider name as defined in your JFrog instance
             oidc-provider-name: manojk-oci
+            version: latest
             # Other Frogbot parameters (e.g., watch-name, etc.) would go here
