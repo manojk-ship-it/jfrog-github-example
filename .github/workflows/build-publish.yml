@@ -4,11 +4,11 @@ on:
         branches:
           - main
 permissions:
-  actions: read # for detecting the Github Actions environment.
-  id-token: write # for creating OIDC tokens for signing.
-  packages: write
-  contents: read
-  
+    actions: read # for detecting the Github Actions environment.
+    id-token: write # for creating OIDC tokens for signing.
+    packages: write
+    contents: read
+    
 jobs:
     build-publish-python:
         runs-on: ubuntu-latest
@@ -136,24 +136,27 @@ jobs:
                 echo "$WARNING" >> $GITHUB_STEP_SUMMARY
                 echo "$CAUTION" >> $GITHUB_STEP_SUMMARY
                 
-# 5. Hypothetical Job to fix the Frogbot JF_URL error
-# This job is assumed to exist elsewhere in your workflow based on the last error.
-# I've included it here with minimal necessary configuration to resolve the JF_URL issue.
 ---
+    # This is the job where the Frogbot error occurred previously.
     security-scan-frogbot:
-      needs: build-publish-python # Ensure it runs after the image is built
+      needs: build-publish-python
       runs-on: ubuntu-latest
       env:
-        # FIX: Explicitly set JF_URL here to fix the "getaddrinfo EAI_AGAIN" error
+        # ✅ FIX: Explicitly set JF_URL to your JFrog platform instance URL 
+        # to resolve the "getaddrinfo EAI_AGAIN" (DNS/connection) error.
         JF_URL: https://hts2.jfrog.io
-        JF_PROJECT: ${{ vars.JF_PROJECT }} # Assuming this is still needed
-        # Assuming you use a GitHub token for Frogbot to open PRs, etc.
+        JF_PROJECT: ${{ vars.JF_PROJECT }} 
+        # Use GITHUB_TOKEN to allow Frogbot to interact with the Git repository (e.g., open PRs)
         JF_GIT_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
       steps:
+        - name: Checkout Repository
+          uses: actions/checkout@v4
+          # Needed if Frogbot is configured to scan code/manifest files
+
         - name: Run Frogbot Security Scan
           uses: jfrog/frogbot@v2
           with:
-            # FIX: Use the correct OIDC provider name as defined in your JFrog instance
+            # Ensure this matches the OIDC provider name configured in JFrog
             oidc-provider-name: manojk-oci
             version: latest
-            # Other Frogbot parameters (e.g., watch-name, etc.) would go here
+            # You may add 'watch-name', 'project', etc. here if required.
