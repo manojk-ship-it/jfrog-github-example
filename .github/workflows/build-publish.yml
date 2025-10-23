@@ -14,7 +14,7 @@ jobs:
         runs-on: ubuntu-latest
         env:
           DOCKER_REPO: 'manojk-python-local'
-          IMAGE_NAME: 'my-python-image:${{ github.run_number }}' # Adjusted from my-very-cool-image
+          IMAGE_NAME: 'my-python-image-2:${{ github.run_number }}' # Adjusted from my-very-cool-image
           JF_URL: https://hts2.jfrog.io
           DOCKER_CLI_EXPERIMENTAL: enabled
         steps:
